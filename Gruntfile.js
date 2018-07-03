@@ -269,7 +269,6 @@ module.exports = function (grunt) {
     }
     grunt.task.run(
       'bump-only:' + target, // Version update
-      'test', // Tests
       'concat:release', // Concat with release banner
       'uglify:release', // Minify with release banner
       'changelog', // Changelog update

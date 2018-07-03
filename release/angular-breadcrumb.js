@@ -1,6 +1,6 @@
-/*! angular-breadcrumb - v0.5.0
+/*! angular-breadcrumb - v0.5.2
 * http://ncuillery.github.io/angular-breadcrumb
-* Copyright (c) 2016 Nicolas Cuillery; Licensed MIT */
+* Copyright (c) 2018 Nicolas Cuillery; Licensed MIT */
 
 (function (window, angular, undefined) {
 'use strict';
@@ -194,10 +194,10 @@ var getExpression = function(interpolationFunction) {
     }
 };
 
-var registerWatchers = function(labelWatcherArray, interpolationFunction, viewScope, step) {
+var registerWatchers = function(labelWatcherArray, interpolationFunction, viewScope, step, key) {
     angular.forEach(getExpression(interpolationFunction), function(expression) {
         var watcher = viewScope.$watch(expression, function() {
-            step.ncyBreadcrumbLabel = interpolationFunction(viewScope);
+            step['ncyBreadcrumb' + key] = interpolationFunction(viewScope);
         });
         labelWatcherArray.push(watcher);
     });
@@ -244,11 +244,18 @@ function BreadcrumbDirective($interpolate, $breadcrumb, $rootScope) {
                     var viewScope = $breadcrumb.$getLastViewScope();
                     scope.steps = $breadcrumb.getStatesChain();
                     angular.forEach(scope.steps, function (step) {
-                        if (step.ncyBreadcrumb && step.ncyBreadcrumb.label) {
-                            var parseLabel = $interpolate(step.ncyBreadcrumb.label);
-                            step.ncyBreadcrumbLabel = parseLabel(viewScope);
-                            // Watcher for further viewScope updates
-                            registerWatchers(labelWatchers, parseLabel, viewScope, step);
+                        if (step.ncyBreadcrumb) {
+                            var keys = Object.keys(step.ncyBreadcrumb);
+                            angular.forEach(keys, function(key){
+                                if (key !== 'parent') {
+                                    var fixedKey = key.charAt(0).toUpperCase() + key.substr(1).toLowerCase()
+                                    var parseLabel = $interpolate(step.ncyBreadcrumb[key]);
+                                    step['ncyBreadcrumb' + fixedKey] = parseLabel(viewScope);
+                                    // Watcher for further viewScope updates
+                                    // Tricky last arg: the last step is the entire scope of the directive !
+                                    registerWatchers(labelWatchers, parseLabel, viewScope, step, fixedKey);
+                                }
+                            });
                         } else {
                             step.ncyBreadcrumbLabel = step.name;
                         }
@@ -301,12 +308,18 @@ function BreadcrumbLastDirective($interpolate, $breadcrumb, $rootScope) {
                         var lastStep = $breadcrumb.getLastStep();
                         if(lastStep) {
                             scope.ncyBreadcrumbLink = lastStep.ncyBreadcrumbLink;
-                            if (lastStep.ncyBreadcrumb && lastStep.ncyBreadcrumb.label) {
-                                var parseLabel = $interpolate(lastStep.ncyBreadcrumb.label);
-                                scope.ncyBreadcrumbLabel = parseLabel(viewScope);
-                                // Watcher for further viewScope updates
-                                // Tricky last arg: the last step is the entire scope of the directive !
-                                registerWatchers(labelWatchers, parseLabel, viewScope, scope);
+                            if (lastStep.ncyBreadcrumb) {
+                                var keys = Object.keys(lastStep.ncyBreadcrumb);
+                                angular.forEach(keys, function(key){
+                                    if (key !== 'parent') {
+                                        var fixedKey = key.charAt(0).toUpperCase() + key.substr(1).toLowerCase()
+                                        var parseLabel = $interpolate(lastStep.ncyBreadcrumb[key]);
+                                        scope['ncyBreadcrumb' + fixedKey] = parseLabel(viewScope);
+                                        // Watcher for further viewScope updates
+                                        // Tricky last arg: the last step is the entire scope of the directive !
+                                        registerWatchers(labelWatchers, parseLabel, viewScope, scope, fixedKey);
+                                    }
+                                });
                             } else {
                                 scope.ncyBreadcrumbLabel = lastStep.name;
                             }
@@ -368,11 +381,17 @@ function BreadcrumbTextDirective($interpolate, $breadcrumb, $rootScope) {
                         var steps = $breadcrumb.getStatesChain();
                         var combinedLabels = [];
                         angular.forEach(steps, function (step) {
-                            if (step.ncyBreadcrumb && step.ncyBreadcrumb.label) {
-                                var parseLabel = $interpolate(step.ncyBreadcrumb.label);
-                                combinedLabels.push(parseLabel(viewScope));
-                                // Watcher for further viewScope updates
-                                registerWatchersText(labelWatchers, parseLabel, viewScope);
+                            if (step.ncyBreadcrumb) {
+                                var keys = Object.keys(step.ncyBreadcrumb);
+                                angular.forEach(keys, function(key){
+                                    if (key !== 'parent') {
+                                        var fixedKey = key.charAt(0).toUpperCase() + key.substr(1).toLowerCase()
+                                        var parseLabel = $interpolate(step.ncyBreadcrumb[key]);
+                                        combinedLabels.push(parseLabel(viewScope));
+                                        // Watcher for further viewScope updates
+                                        registerWatchersText(labelWatchers, parseLabel, viewScope, null, fixedKey);
+                                    }
+                                });
                             } else {
                                 combinedLabels.push(step.name);
                             }
